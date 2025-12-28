@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  
+  .input-field {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+  }
+  
+  .card {
+    @apply bg-white rounded-lg shadow-md p-6;
+  }
+  
+  /* Timeline Zigzag Line Perfect Connection Enhancement */
+  .timeline-container {
+    position: relative;
+    overflow: visible !important;
+  }
+  
+  .timeline-svg {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px !important;
+    height: 100% !important;
+    z-index: 10;
+    overflow: visible !important;
+    pointer-events: none;
+  }
+  
+  .timeline-svg svg {
+    width: 100% !important;
+    height: 100% !important;
+    overflow: visible !important;
+  }
+  
+  .timeline-step {
+    position: relative;
+    z-index: 20;
+  }
+  
+  .timeline-node {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50 !important;
+  }
+  
+  /* Ensure perfect node-to-line connection */
+  .timeline-node > div {
+    position: relative;
+  }
+  
+  .timeline-node > div::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 4px;
+    height: 4px;
+    background: currentColor;
+    border-radius: 50%;
+    z-index: 60;
+  }
+}
