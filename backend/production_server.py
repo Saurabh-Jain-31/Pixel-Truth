@@ -2,7 +2,7 @@
 """
 Production AI server with real trained model, MongoDB, and OSINT analysis
 """
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,6 +12,7 @@ import time
 from datetime import datetime
 import asyncio
 from typing import Optional
+import json
 
 # Import our services
 from app.core.database import connect_to_mongo, close_mongo_connection, get_database
@@ -86,34 +87,75 @@ async def health():
 async def test_connection():
     return {"status": "connected", "message": "Production backend is running"}
 
-# Mock authentication endpoints (replace with real auth later)
+@app.get("/")
+async def root():
+    return {"message": "Pixel-Truth Production API", "status": "running", "endpoints": ["/api/health", "/api/auth/test"]}
+
+# Mock authentication endpoints (accept any credentials for demo)
 @app.post("/api/auth/register")
-async def register():
-    return {
-        "token": "demo_token_123",
-        "user": {
-            "id": "demo_user_id",
-            "username": "demo_user",
-            "email": "demo@example.com",
-            "plan": "free",
-            "analysis_count": 0,
-            "monthly_analysis_limit": 10
+async def register(request: Request):
+    """Accept any registration credentials"""
+    try:
+        body = await request.json()
+        username = body.get("username", "demo_user")
+        email = body.get("email", "demo@example.com")
+        
+        return {
+            "token": "demo_token_123",
+            "user": {
+                "id": "demo_user_id",
+                "username": username,
+                "email": email,
+                "plan": "free",
+                "analysis_count": 0,
+                "monthly_analysis_limit": 10
+            }
         }
-    }
+    except Exception as e:
+        print(f"Registration error: {e}")
+        return {
+            "token": "demo_token_123",
+            "user": {
+                "id": "demo_user_id",
+                "username": "demo_user",
+                "email": "demo@example.com",
+                "plan": "free",
+                "analysis_count": 0,
+                "monthly_analysis_limit": 10
+            }
+        }
 
 @app.post("/api/auth/login")
-async def login():
-    return {
-        "token": "demo_token_123", 
-        "user": {
-            "id": "demo_user_id",
-            "username": "demo_user",
-            "email": "demo@example.com",
-            "plan": "free",
-            "analysis_count": 0,
-            "monthly_analysis_limit": 10
+async def login(request: Request):
+    """Accept any login credentials"""
+    try:
+        body = await request.json()
+        email = body.get("email", "demo@example.com")
+        
+        return {
+            "token": "demo_token_123", 
+            "user": {
+                "id": "demo_user_id",
+                "username": "demo_user",
+                "email": email,
+                "plan": "free",
+                "analysis_count": 0,
+                "monthly_analysis_limit": 10
+            }
         }
-    }
+    except Exception as e:
+        print(f"Login error: {e}")
+        return {
+            "token": "demo_token_123", 
+            "user": {
+                "id": "demo_user_id",
+                "username": "demo_user",
+                "email": "demo@example.com",
+                "plan": "free",
+                "analysis_count": 0,
+                "monthly_analysis_limit": 10
+            }
+        }
 
 @app.get("/api/auth/me")
 async def get_me():
