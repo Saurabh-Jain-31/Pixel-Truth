@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: pixel-truth-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python production_server.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: MONGODB_URL
+        value: mongodb+srv://pixeltruth:pixeltruth123@cluster0.mongodb.net/pixeltruth?retryWrites=true&w=majority
+      - key: JWT_SECRET_KEY
+        value: your-super-secret-jwt-key-change-this-in-production
+      - key: ENVIRONMENT
+        value: production
+    disk:
+      name: model-storage
+      mountPath: /opt/render/project/src/backend/ml/models
+      sizeGB: 1

@@ -26,10 +26,15 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Pixel-Truth Production API", version="2.0.0")
 
-# CORS middleware
+# CORS middleware - Allow GitHub Pages
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5000"],
+    allow_origins=[
+        "http://localhost:3000", 
+        "http://localhost:5000",
+        "https://saurabh-jain-31.github.io",
+        "https://pixel-truth-backend.onrender.com"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -64,10 +69,6 @@ async def startup_event():
 async def shutdown_event():
     """Cleanup on shutdown"""
     await close_mongo_connection()
-
-# Serve static files if dist exists
-if os.path.exists("dist"):
-    app.mount("/assets", StaticFiles(directory="dist/assets"), name="assets")
 
 # API endpoints (define these BEFORE catch-all routes)
 @app.get("/api/health")
@@ -487,23 +488,12 @@ def _generate_authenticity_indicators_from_metadata(metadata: dict) -> list:
     
     return factors or ["Analysis completed"]
 
-# Frontend serving routes (define these AFTER API routes)
-if os.path.exists("dist"):
-    @app.get("/")
-    async def serve_frontend():
-        return FileResponse("dist/index.html")
-    
-    @app.get("/{path:path}")
-    async def serve_spa(path: str):
-        if path.startswith("api/"):
-            return JSONResponse({"error": "API endpoint not found"})
-        return FileResponse("dist/index.html")
-
 if __name__ == "__main__":
     import uvicorn
+    port = int(os.environ.get("PORT", 5000))
     print("🚀 Starting Pixel-Truth Production Server...")
     print("🤖 AI Model: Real trained model with OSINT analysis")
     print("🗄️ Database: MongoDB integration")
-    print("🌐 Server: http://localhost:5000")
+    print(f"🌐 Server: http://0.0.0.0:{port}")
     print("📖 API Docs: http://localhost:5000/docs")
-    uvicorn.run(app, host="0.0.0.0", port=5000)
+    uvicorn.run(app, host="0.0.0.0", port=port)
