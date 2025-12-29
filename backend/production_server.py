@@ -26,14 +26,16 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Pixel-Truth Production API", version="2.0.0")
 
-# CORS middleware - Allow GitHub Pages
+# CORS middleware - Allow GitHub Pages and your server
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000", 
         "http://localhost:5000",
         "https://saurabh-jain-31.github.io",
-        "https://pixel-truth-backend.onrender.com"
+        "http://74.220.48.0:5000",
+        "http://74.220.56.0:5000",
+        "*"  # Allow all origins for your server deployment
     ],
     allow_credentials=True,
     allow_methods=["*"],
