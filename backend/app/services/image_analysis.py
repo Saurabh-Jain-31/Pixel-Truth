@@ -106,34 +106,37 @@ class ImageAnalysisService:
         return anomalies
     
     def analyze_image_quality(self, image_path: str) -> Dict[str, float]:
-        """Analyze image quality metrics that might indicate AI generation"""
+        """Analyze image quality metrics - OPTIMIZED for speed"""
         try:
-            # Load image with OpenCV
+            # Load image with OpenCV at reduced resolution for speed
             img = cv2.imread(image_path)
             if img is None:
                 return {}
             
+            # Resize image to max 512x512 for faster processing
+            height, width = img.shape[:2]
+            if max(height, width) > 512:
+                scale = 512 / max(height, width)
+                new_width = int(width * scale)
+                new_height = int(height * scale)
+                img = cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_AREA)
+            
             # Convert to grayscale
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             
-            # Calculate various quality metrics
+            # Calculate essential metrics only (reduced computation)
             metrics = {}
             
-            # Laplacian variance (sharpness)
+            # Laplacian variance (sharpness) - most important
             metrics['sharpness'] = cv2.Laplacian(gray, cv2.CV_64F).var()
             
-            # Noise estimation using standard deviation
+            # Noise estimation - simplified
             metrics['noise_level'] = np.std(gray)
             
-            # Contrast (standard deviation of pixel intensities)
-            metrics['contrast'] = np.std(gray) / np.mean(gray) if np.mean(gray) > 0 else 0
-            
-            # Brightness
+            # Skip expensive edge detection for speed
+            # Use simple brightness and contrast instead
             metrics['brightness'] = np.mean(gray) / 255.0
-            
-            # Edge density
-            edges = cv2.Canny(gray, 50, 150)
-            metrics['edge_density'] = np.sum(edges > 0) / edges.size
+            metrics['contrast'] = np.std(gray) / np.mean(gray) if np.mean(gray) > 0 else 0
             
             return metrics
             
@@ -153,63 +156,89 @@ class ImageAnalysisService:
             raise
     
     def analyze_image(self, image_path: str, filename: str) -> ImageAnalysisResult:
-        """Complete image analysis pipeline"""
+        """Complete image analysis pipeline - OPTIMIZED for speed"""
         start_time = time.time()
         
         try:
-            # Extract EXIF data
+            logger.info(f"🚀 Starting FAST analysis: {filename}")
+            
+            # Step 1: Quick EXIF extraction (usually fast)
+            exif_start = time.time()
             exif_data = self.extract_exif_data(image_path)
+            exif_time = time.time() - exif_start
+            logger.info(f"   EXIF extraction: {exif_time:.3f}s")
             
-            # Detect metadata anomalies
+            # Step 2: Quick metadata anomaly detection
+            metadata_start = time.time()
             metadata_anomalies = self.detect_metadata_anomalies(exif_data)
+            metadata_time = time.time() - metadata_start
+            logger.info(f"   Metadata analysis: {metadata_time:.3f}s")
             
-            # Analyze image quality
+            # Step 3: Optimized quality analysis
+            quality_start = time.time()
             quality_metrics = self.analyze_image_quality(image_path)
+            quality_time = time.time() - quality_start
+            logger.info(f"   Quality analysis: {quality_time:.3f}s")
             
-            # Preprocess image for model
+            # Step 4: Fast image preprocessing
+            preprocess_start = time.time()
             image_tensor = self.preprocess_image_for_model(image_path)
+            preprocess_time = time.time() - preprocess_start
+            logger.info(f"   Image preprocessing: {preprocess_time:.3f}s")
             
-            # Get AI detection prediction
+            # Step 5: ML model inference (usually the slowest part)
+            ml_start = time.time()
             prediction_result = model_manager.predict_image(image_tensor)
+            ml_time = time.time() - ml_start
+            logger.info(f"   ML inference: {ml_time:.3f}s")
             
-            # Calculate processing time
-            processing_time = time.time() - start_time
-            
-            # Combine metadata analysis with ML prediction
+            # Step 6: Quick metadata scoring
             metadata_score = self._calculate_metadata_suspicion_score(metadata_anomalies, quality_metrics)
             
-            # Adjust confidence based on metadata
+            # Step 7: Adjust confidence (fast)
             adjusted_confidence = self._adjust_confidence_with_metadata(
                 prediction_result['confidence'], 
                 metadata_score
             )
             
+            # Calculate total processing time
+            processing_time = time.time() - start_time
+            
             # Create result
             result = ImageAnalysisResult(
                 prediction=prediction_result['prediction'],
                 confidence_score=adjusted_confidence,
-                model_version="1.0.0",
+                model_version="2.1.0-optimized",
                 processing_time=processing_time,
                 metadata={
                     'exif_anomalies': metadata_anomalies,
                     'quality_metrics': quality_metrics,
                     'metadata_suspicion_score': metadata_score,
                     'ml_probabilities': prediction_result.get('probabilities', {}),
-                    'original_confidence': prediction_result['confidence']
+                    'original_confidence': prediction_result['confidence'],
+                    'performance_breakdown': {
+                        'exif_time': exif_time,
+                        'metadata_time': metadata_time,
+                        'quality_time': quality_time,
+                        'preprocess_time': preprocess_time,
+                        'ml_time': ml_time,
+                        'total_time': processing_time
+                    }
                 }
             )
             
-            logger.info(f"Image analysis completed: {filename} -> {result.prediction} ({result.confidence_score:.3f})")
+            logger.info(f"✅ FAST analysis completed: {filename} -> {result.prediction} ({result.confidence_score:.3f}) in {processing_time:.3f}s")
             return result
             
         except Exception as e:
-            logger.error(f"Error analyzing image {filename}: {e}")
+            processing_time = time.time() - start_time
+            logger.error(f"❌ Error in FAST analysis {filename}: {e}")
             # Return error result
             return ImageAnalysisResult(
                 prediction="error",
                 confidence_score=0.0,
-                model_version="1.0.0",
-                processing_time=time.time() - start_time,
+                model_version="2.1.0-optimized",
+                processing_time=processing_time,
                 metadata={'error': str(e)}
             )
     

@@ -195,7 +195,7 @@ class ModelManager:
             logger.error(f"Error saving model: {e}")
     
     def predict_image(self, image_tensor: torch.Tensor) -> Dict[str, Any]:
-        """Predict on a single image tensor"""
+        """Predict on a single image tensor - OPTIMIZED for speed"""
         if self.model is None:
             self.load_model()
         
@@ -210,9 +210,11 @@ class ModelManager:
             # Move to device
             image_tensor = image_tensor.to(self.device)
             
-            # Get prediction
+            # Get prediction with optimized inference
             with torch.no_grad():
-                results = self.model.predict(image_tensor)
+                # Use torch.inference_mode for better performance
+                with torch.inference_mode():
+                    results = self.model.predict(image_tensor)
             
             return results[0]  # Return first (and only) result
             

@@ -241,27 +241,27 @@ async def upload_file(image: UploadFile = File(...)):
         "upload_id": file_id
     }
 
-# FREE AI Analysis endpoint - NO LOGIN REQUIRED
+# FAST FREE AI Analysis endpoint - OPTIMIZED for speed
 @app.post("/api/analysis/analyze")
 async def analyze_image_free(filename: str = Form(...), original_name: str = Form(...), db=Depends(get_db)):
-    """FREE AI Analysis - No authentication required"""
+    """FAST FREE AI Analysis - Optimized for speed, no authentication required"""
     
     file_path = os.path.join("uploads", filename)
     
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")
     
-    print(f"🔍 FREE Analysis: {original_name}")
+    print(f"🚀 FAST FREE Analysis starting: {original_name}")
     start_time = time.time()
     
     try:
-        # Use real AI analysis service
+        # Use optimized AI analysis service
         analysis_result = image_analysis_service.analyze_image(file_path, original_name)
         
         processing_time = time.time() - start_time
         analysis_id = str(uuid.uuid4())
         
-        # Create comprehensive analysis result
+        # Create streamlined result for speed
         result = {
             "analysis_id": analysis_id,
             "prediction": analysis_result.prediction,
@@ -270,58 +270,98 @@ async def analyze_image_free(filename: str = Form(...), original_name: str = For
             "plan": "free",
             "metadata": {
                 "ai_probabilities": analysis_result.metadata.get('ml_probabilities', {}),
-                "exif_anomalies": analysis_result.metadata.get('exif_anomalies', {}),
-                "quality_metrics": analysis_result.metadata.get('quality_metrics', {}),
-                "metadata_suspicion_score": analysis_result.metadata.get('metadata_suspicion_score', 0.0),
-                "model_status": "loaded",
-                "model_version": analysis_result.model_version
+                "model_status": "optimized",
+                "model_version": analysis_result.model_version,
+                "performance": analysis_result.metadata.get('performance_breakdown', {})
             },
-            "exif_data": analysis_result.metadata.get('exif_data', {}),
             "osint_analysis": {
                 "metadata_analysis": {
                     "has_exif": len(analysis_result.metadata.get('exif_anomalies', {})) > 0,
-                    "anomalies_detected": analysis_result.metadata.get('exif_anomalies', {}),
                     "suspicion_score": analysis_result.metadata.get('metadata_suspicion_score', 0.0)
                 },
                 "quality_analysis": analysis_result.metadata.get('quality_metrics', {}),
-                "authenticity_indicators": _generate_authenticity_indicators(analysis_result)
+                "authenticity_indicators": _generate_fast_authenticity_indicators(analysis_result)
             },
             "status": "completed",
-            "message": "Free analysis completed. Register for premium features!"
+            "message": f"Fast analysis completed in {processing_time:.2f}s! Upgrade for detailed reports."
         }
         
-        # Save to database if available (anonymous analysis)
+        # Optional: Save to database if available (async to not slow down response)
         if db is not None:
             try:
                 analysis_doc = {
                     "_id": analysis_id,
-                    "user_id": "anonymous",  # No user required
+                    "user_id": "anonymous_fast",
                     "original_filename": original_name,
                     "filename": filename,
-                    "file_path": file_path,
                     "prediction": analysis_result.prediction,
                     "confidence_score": analysis_result.confidence_score,
-                    "model_version": analysis_result.model_version,
                     "processing_time": processing_time,
-                    "metadata": analysis_result.metadata,
                     "created_at": datetime.utcnow(),
-                    "status": "completed",
-                    "plan": "free"
+                    "plan": "free_fast"
                 }
                 
-                await db.image_analyses.insert_one(analysis_doc)
-                logger.info(f"✅ Free analysis saved: {analysis_id}")
+                # Use background task to save without blocking response
+                asyncio.create_task(save_analysis_async(db, analysis_doc))
                 
             except Exception as e:
-                logger.error(f"❌ Error saving to database: {e}")
+                logger.error(f"❌ Error queuing database save: {e}")
         
-        print(f"✅ FREE AI Analysis complete: {analysis_result.prediction} ({analysis_result.confidence_score:.3f})")
+        print(f"✅ FAST FREE Analysis complete: {analysis_result.prediction} ({analysis_result.confidence_score:.3f}) in {processing_time:.3f}s")
         
         return result
         
     except Exception as e:
-        logger.error(f"❌ Error in AI analysis: {e}")
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+        processing_time = time.time() - start_time
+        logger.error(f"❌ Error in FAST analysis: {e}")
+        raise HTTPException(status_code=500, detail=f"Fast analysis failed: {str(e)}")
+
+async def save_analysis_async(db, analysis_doc):
+    """Save analysis to database asynchronously"""
+    try:
+        await db.image_analyses.insert_one(analysis_doc)
+        logger.info(f"✅ Fast analysis saved: {analysis_doc['_id']}")
+    except Exception as e:
+        logger.error(f"❌ Async database save failed: {e}")
+
+def _generate_fast_authenticity_indicators(analysis_result: ImageAnalysisResult) -> list:
+    """Generate authenticity indicators quickly"""
+    indicators = []
+    
+    # Quick indicators based on prediction
+    prediction = analysis_result.prediction
+    confidence = analysis_result.confidence_score
+    
+    if prediction == "authentic":
+        indicators = [
+            f"Image classified as AUTHENTIC ({confidence:.1%} confidence)",
+            "Natural image characteristics detected",
+            "No obvious AI generation patterns found"
+        ]
+    elif prediction == "ai_generated":
+        indicators = [
+            f"Image classified as AI-GENERATED ({confidence:.1%} confidence)",
+            "Artificial generation patterns detected",
+            "Likely created by AI model"
+        ]
+    elif prediction == "manipulated":
+        indicators = [
+            f"Image classified as MANIPULATED ({confidence:.1%} confidence)",
+            "Digital editing traces detected",
+            "Image appears to be modified"
+        ]
+    else:
+        indicators = [
+            f"Analysis completed with {confidence:.1%} confidence",
+            f"Classification: {prediction.upper()}",
+            "Fast analysis mode - upgrade for detailed insights"
+        ]
+    
+    # Add performance info
+    if analysis_result.processing_time < 2.0:
+        indicators.append(f"⚡ Fast analysis completed in {analysis_result.processing_time:.2f}s")
+    
+    return indicators
 
 def _generate_authenticity_indicators(analysis_result: ImageAnalysisResult) -> list:
     """Generate human-readable authenticity indicators"""
