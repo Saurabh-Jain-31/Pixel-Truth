@@ -126,18 +126,25 @@ class ModelManager:
         
         logger.info(f"Using device: {self.device}")
     
-    def load_model(self, model_file: str = "ai_detection_model.pth") -> bool:
+    def load_model(self, model_file: str = "simple_ai_detection_model.pth") -> bool:
         """Load trained model from file"""
         try:
             model_filepath = os.path.join(self.model_path, model_file)
             
+            # Also try absolute path if relative doesn't work
             if not os.path.exists(model_filepath):
-                logger.warning(f"Model file not found: {model_filepath}")
-                # Load pretrained model as fallback
-                self.model = AIDetectionCNN(pretrained=True)
-                self.model.to(self.device)
-                self.model.eval()
-                return False
+                # Try with backend prefix
+                alt_path = os.path.join("backend", self.model_path, model_file)
+                if os.path.exists(alt_path):
+                    model_filepath = alt_path
+                else:
+                    logger.warning(f"Model file not found: {model_filepath}")
+                    # Load pretrained model as fallback
+                    self.model = AIDetectionCNN(pretrained=True)
+                    self.model.to(self.device)
+                    self.model.eval()
+                    logger.info("✅ Using pretrained ResNet50 model as fallback")
+                    return False
             
             # Load model state
             checkpoint = torch.load(model_filepath, map_location=self.device)
@@ -153,7 +160,7 @@ class ModelManager:
             self.model.to(self.device)
             self.model.eval()
             
-            logger.info(f"Model loaded successfully from {model_filepath}")
+            logger.info(f"✅ Real trained model loaded successfully from {model_filepath}")
             return True
             
         except Exception as e:
@@ -162,6 +169,7 @@ class ModelManager:
             self.model = AIDetectionCNN(pretrained=True)
             self.model.to(self.device)
             self.model.eval()
+            logger.info("✅ Using pretrained ResNet50 model as fallback")
             return False
     
     def save_model(self, model: nn.Module, optimizer, epoch: int, 
