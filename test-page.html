@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Page</title>
+</head>
+<body>
+    <h1>✅ Test Page Working</h1>
+    <p>If you can see this, the basic HTML is working.</p>
+    <button onclick="testJS()">Test JavaScript</button>
+    <div id="result"></div>
+    
+    <script>
+        console.log('✅ JavaScript is working');
+        
+        function testJS() {
+            document.getElementById('result').innerHTML = '✅ JavaScript click event working';
+            console.log('✅ Button clicked');
+        }
+        
+        // Test basic functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ DOM loaded');
+            document.getElementById('result').innerHTML = '✅ DOM ready';
+        });
+    </script>
+</body>
+</html>
