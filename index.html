@@ -10,6 +10,46 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
+    <!-- API Configuration for Render deployment - MUST LOAD FIRST -->
+    <script src="./api-config.js"></script>
+    <script src="./fix-api-config.js"></script>
+    <script src="./immediate-render-test.js"></script>
+    <script src="./emergency-mock-api.js"></script>
+    
+    <!-- Free Scan Redirect -->
+    <script>
+        // Check if user wants free scanning
+        if (window.location.search.includes('free=true') || window.location.hash.includes('free')) {
+            window.location.href = './direct-scan.html';
+        }
+        
+        // Add free scan option to the page
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                // Add a free scan button if the main app loads
+                const freeButton = document.createElement('div');
+                freeButton.innerHTML = `
+                    <div style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+                        <a href="./direct-scan.html" style="
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            color: white;
+                            padding: 12px 24px;
+                            border-radius: 25px;
+                            text-decoration: none;
+                            font-weight: 600;
+                            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+                            display: inline-block;
+                            transition: transform 0.2s ease;
+                        " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                            🆓 Free Scan (No Login)
+                        </a>
+                    </div>
+                `;
+                document.body.appendChild(freeButton);
+            }, 2000);
+        });
+    </script>
+    
     <!-- GitHub Pages SPA routing script -->
     <script type="text/javascript">
       // Single Page Apps for GitHub Pages

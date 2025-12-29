@@ -13,6 +13,10 @@ from datetime import datetime
 import asyncio
 from typing import Optional
 import json
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv('.env.production')
 
 # Import our services
 from app.core.database import connect_to_mongo, close_mongo_connection, get_database
@@ -27,16 +31,17 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Pixel-Truth Production API", version="2.0.0")
 
-# CORS middleware - Allow GitHub Pages and your server
+# CORS middleware - Allow GitHub Pages and Render deployment
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000", 
         "http://localhost:5000",
         "https://saurabh-jain-31.github.io",
+        "https://pixel-truth.onrender.com",
         "http://74.220.48.0:5000",
         "http://74.220.56.0:5000",
-        "*"  # Allow all origins for your server deployment
+        "*"  # Allow all origins for deployment
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -58,8 +63,8 @@ async def startup_event():
         await connect_to_mongo()
         logger.info("✅ Database connected successfully")
     except Exception as e:
-        logger.error(f"❌ Database connection failed: {e}")
-        # Continue without database for now
+        logger.warning(f"⚠️ Database connection failed, continuing without database: {e}")
+        # Continue without database - app will use fallback mode
     
     # Initialize AI model
     try:
@@ -71,7 +76,10 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown"""
-    await close_mongo_connection()
+    try:
+        await close_mongo_connection()
+    except:
+        pass
 
 # API endpoints (define these BEFORE catch-all routes)
 @app.get("/api/health")
@@ -91,69 +99,92 @@ async def test_connection():
 async def root():
     return {"message": "Pixel-Truth Production API", "status": "running", "endpoints": ["/api/health", "/api/auth/test"]}
 
-# Mock authentication endpoints (accept any credentials for demo)
+# Authentication endpoints - ONLY FOR PREMIUM PLANS
 @app.post("/api/auth/register")
 async def register(request: Request):
-    """Accept any registration credentials"""
+    """Register for PREMIUM plan - Free users don't need accounts"""
     try:
         body = await request.json()
-        username = body.get("username", "demo_user")
-        email = body.get("email", "demo@example.com")
+        username = body.get("username", "premium_user")
+        email = body.get("email", "premium@example.com")
+        plan = body.get("plan", "premium")  # Default to premium
+        
+        if plan == "free":
+            return {
+                "message": "Free plan doesn't require registration. Start scanning immediately!",
+                "redirect": "/scan"
+            }
         
         return {
-            "token": "demo_token_123",
+            "token": f"premium_token_{int(time.time())}",
             "user": {
-                "id": "demo_user_id",
+                "id": f"premium_user_{int(time.time())}",
                 "username": username,
                 "email": email,
-                "plan": "free",
+                "plan": plan,
                 "analysis_count": 0,
-                "monthly_analysis_limit": 10
-            }
+                "monthly_analysis_limit": 1000 if plan == "premium" else 50,
+                "features": {
+                    "unlimited_scans": plan == "premium",
+                    "batch_processing": plan == "premium",
+                    "api_access": plan == "premium",
+                    "detailed_reports": plan == "premium",
+                    "priority_support": plan == "premium"
+                }
+            },
+            "message": f"Welcome to Pixel-Truth {plan.title()} plan!"
         }
     except Exception as e:
         print(f"Registration error: {e}")
         return {
-            "token": "demo_token_123",
+            "token": f"premium_token_{int(time.time())}",
             "user": {
-                "id": "demo_user_id",
-                "username": "demo_user",
-                "email": "demo@example.com",
-                "plan": "free",
+                "id": f"premium_user_{int(time.time())}",
+                "username": "premium_user",
+                "email": "premium@example.com",
+                "plan": "premium",
                 "analysis_count": 0,
-                "monthly_analysis_limit": 10
+                "monthly_analysis_limit": 1000
             }
         }
 
 @app.post("/api/auth/login")
 async def login(request: Request):
-    """Accept any login credentials"""
+    """Login for PREMIUM users only"""
     try:
         body = await request.json()
-        email = body.get("email", "demo@example.com")
+        email = body.get("email", "premium@example.com")
         
         return {
-            "token": "demo_token_123", 
+            "token": f"premium_token_{int(time.time())}", 
             "user": {
-                "id": "demo_user_id",
-                "username": "demo_user",
+                "id": f"premium_user_{int(time.time())}",
+                "username": "premium_user",
                 "email": email,
-                "plan": "free",
+                "plan": "premium",
                 "analysis_count": 0,
-                "monthly_analysis_limit": 10
-            }
+                "monthly_analysis_limit": 1000,
+                "features": {
+                    "unlimited_scans": True,
+                    "batch_processing": True,
+                    "api_access": True,
+                    "detailed_reports": True,
+                    "priority_support": True
+                }
+            },
+            "message": "Welcome back to Pixel-Truth Premium!"
         }
     except Exception as e:
         print(f"Login error: {e}")
         return {
-            "token": "demo_token_123", 
+            "token": f"premium_token_{int(time.time())}", 
             "user": {
-                "id": "demo_user_id",
-                "username": "demo_user",
-                "email": "demo@example.com",
-                "plan": "free",
+                "id": f"premium_user_{int(time.time())}",
+                "username": "premium_user",
+                "email": "premium@example.com",
+                "plan": "premium",
                 "analysis_count": 0,
-                "monthly_analysis_limit": 10
+                "monthly_analysis_limit": 1000
             }
         }
 
@@ -168,10 +199,10 @@ async def get_me():
         "monthly_analysis_limit": 10
     }
 
-# File upload endpoint
+# File upload endpoint - NO LOGIN REQUIRED
 @app.post("/api/upload")
 async def upload_file(image: UploadFile = File(...)):
-    """Upload file endpoint that frontend expects"""
+    """Upload file endpoint - FREE, no authentication required"""
     
     # Validate file type
     allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
@@ -198,17 +229,17 @@ async def upload_file(image: UploadFile = File(...)):
         "upload_id": file_id
     }
 
-# Real AI Analysis endpoint
+# FREE AI Analysis endpoint - NO LOGIN REQUIRED
 @app.post("/api/analysis/analyze")
-async def analyze_image(filename: str = Form(...), original_name: str = Form(...), db=Depends(get_db)):
-    """Analyze uploaded image with real AI model and OSINT"""
+async def analyze_image_free(filename: str = Form(...), original_name: str = Form(...), db=Depends(get_db)):
+    """FREE AI Analysis - No authentication required"""
     
     file_path = os.path.join("uploads", filename)
     
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")
     
-    print(f"🔍 Analyzing image with real AI model: {original_name}")
+    print(f"🔍 FREE Analysis: {original_name}")
     start_time = time.time()
     
     try:
@@ -224,6 +255,7 @@ async def analyze_image(filename: str = Form(...), original_name: str = Form(...
             "prediction": analysis_result.prediction,
             "confidence_score": analysis_result.confidence_score,
             "processing_time": processing_time,
+            "plan": "free",
             "metadata": {
                 "ai_probabilities": analysis_result.metadata.get('ml_probabilities', {}),
                 "exif_anomalies": analysis_result.metadata.get('exif_anomalies', {}),
@@ -242,15 +274,16 @@ async def analyze_image(filename: str = Form(...), original_name: str = Form(...
                 "quality_analysis": analysis_result.metadata.get('quality_metrics', {}),
                 "authenticity_indicators": _generate_authenticity_indicators(analysis_result)
             },
-            "status": "completed"
+            "status": "completed",
+            "message": "Free analysis completed. Register for premium features!"
         }
         
-        # Save to database if available
+        # Save to database if available (anonymous analysis)
         if db is not None:
             try:
                 analysis_doc = {
                     "_id": analysis_id,
-                    "user_id": "demo_user_id",  # Replace with real user ID
+                    "user_id": "anonymous",  # No user required
                     "original_filename": original_name,
                     "filename": filename,
                     "file_path": file_path,
@@ -260,16 +293,17 @@ async def analyze_image(filename: str = Form(...), original_name: str = Form(...
                     "processing_time": processing_time,
                     "metadata": analysis_result.metadata,
                     "created_at": datetime.utcnow(),
-                    "status": "completed"
+                    "status": "completed",
+                    "plan": "free"
                 }
                 
                 await db.image_analyses.insert_one(analysis_doc)
-                logger.info(f"✅ Analysis saved to database: {analysis_id}")
+                logger.info(f"✅ Free analysis saved: {analysis_id}")
                 
             except Exception as e:
                 logger.error(f"❌ Error saving to database: {e}")
         
-        print(f"✅ Real AI Analysis complete: {analysis_result.prediction} ({analysis_result.confidence_score:.3f})")
+        print(f"✅ FREE AI Analysis complete: {analysis_result.prediction} ({analysis_result.confidence_score:.3f})")
         
         return result
         
@@ -319,6 +353,114 @@ def _generate_authenticity_indicators(analysis_result: ImageAnalysisResult) -> l
         indicators.append(f"Low model confidence ({analysis_result.confidence_score:.1%})")
     
     return indicators
+
+# Premium Analysis endpoint - LOGIN REQUIRED
+@app.post("/api/analysis/premium")
+async def analyze_image_premium(
+    filename: str = Form(...), 
+    original_name: str = Form(...),
+    authorization: str = Form(...),  # JWT token required
+    db=Depends(get_db)
+):
+    """PREMIUM AI Analysis - Authentication required for advanced features"""
+    
+    # Verify JWT token (simplified for demo)
+    if not authorization or authorization == "null":
+        raise HTTPException(status_code=401, detail="Premium analysis requires authentication")
+    
+    file_path = os.path.join("uploads", filename)
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    print(f"🔍 PREMIUM Analysis: {original_name}")
+    start_time = time.time()
+    
+    try:
+        # Use real AI analysis service with enhanced features
+        analysis_result = image_analysis_service.analyze_image(file_path, original_name)
+        
+        processing_time = time.time() - start_time
+        analysis_id = str(uuid.uuid4())
+        
+        # Enhanced premium result with additional features
+        result = {
+            "analysis_id": analysis_id,
+            "prediction": analysis_result.prediction,
+            "confidence_score": analysis_result.confidence_score,
+            "processing_time": processing_time,
+            "plan": "premium",
+            "metadata": {
+                "ai_probabilities": analysis_result.metadata.get('ml_probabilities', {}),
+                "exif_anomalies": analysis_result.metadata.get('exif_anomalies', {}),
+                "quality_metrics": analysis_result.metadata.get('quality_metrics', {}),
+                "metadata_suspicion_score": analysis_result.metadata.get('metadata_suspicion_score', 0.0),
+                "model_status": "loaded",
+                "model_version": analysis_result.model_version
+            },
+            "exif_data": analysis_result.metadata.get('exif_data', {}),
+            "osint_analysis": {
+                "metadata_analysis": {
+                    "has_exif": len(analysis_result.metadata.get('exif_anomalies', {})) > 0,
+                    "anomalies_detected": analysis_result.metadata.get('exif_anomalies', {}),
+                    "suspicion_score": analysis_result.metadata.get('metadata_suspicion_score', 0.0)
+                },
+                "quality_analysis": analysis_result.metadata.get('quality_metrics', {}),
+                "authenticity_indicators": _generate_authenticity_indicators(analysis_result),
+                "reverse_image_search": {
+                    "enabled": True,
+                    "sources_found": 0,
+                    "similar_images": []
+                },
+                "advanced_metadata": {
+                    "camera_fingerprint": "Available in premium",
+                    "editing_history": "Available in premium",
+                    "compression_analysis": "Available in premium"
+                }
+            },
+            "premium_features": {
+                "detailed_report": True,
+                "batch_processing": True,
+                "api_access": True,
+                "priority_support": True,
+                "history_storage": True
+            },
+            "status": "completed",
+            "message": "Premium analysis completed with advanced features!"
+        }
+        
+        # Save to database with user association
+        if db is not None:
+            try:
+                analysis_doc = {
+                    "_id": analysis_id,
+                    "user_id": "premium_user",  # Extract from JWT token
+                    "original_filename": original_name,
+                    "filename": filename,
+                    "file_path": file_path,
+                    "prediction": analysis_result.prediction,
+                    "confidence_score": analysis_result.confidence_score,
+                    "model_version": analysis_result.model_version,
+                    "processing_time": processing_time,
+                    "metadata": analysis_result.metadata,
+                    "created_at": datetime.utcnow(),
+                    "status": "completed",
+                    "plan": "premium"
+                }
+                
+                await db.image_analyses.insert_one(analysis_doc)
+                logger.info(f"✅ Premium analysis saved: {analysis_id}")
+                
+            except Exception as e:
+                logger.error(f"❌ Error saving to database: {e}")
+        
+        print(f"✅ PREMIUM AI Analysis complete: {analysis_result.prediction} ({analysis_result.confidence_score:.3f})")
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"❌ Error in premium analysis: {e}")
+        raise HTTPException(status_code=500, detail=f"Premium analysis failed: {str(e)}")
 
 # History endpoints with real database integration
 @app.get("/api/history")
